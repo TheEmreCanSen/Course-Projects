@@ -1,0 +1,411 @@
+---
+title: |
+  Spring 2023 \
+  GE 461 Introduction to Data Science
+# title: |
+pagetitle: GE 461 Introduction to Data Science
+papersize: a4paper
+always_allow_html: true
+linkcolor: red
+output: 
+  bookdown::html_document2:
+    theme: readable
+    number_sections: false
+    code_folding: "hide"
+    toc: true
+  bookdown::pdf_document2:
+    number_sections: false
+bibliography: GE461.bib
+link-citations: yes
+---
+
+----
+
+<center> <h4>  Emre Can Şen (21902516) & Serkan Uygun (21902916) </h2> </center>
+
+----
+
+```{r setup, include=FALSE}
+library(magrittr)
+library(tidyverse)
+library(car)
+library(knitr)
+library(kableExtra)
+library(pander)
+opts_chunk$set(echo = TRUE)
+
+options(knitr.kable.NA =".") 
+kable_format <- if (is_html_output()) "html" else "latex"
+options(scipen = 999)
+```
+
+
+```{r}
+##library(RSQLite)  ## if package is not on the computer, then install it only once using Tools > Install packages...
+##con <- dbConnect(SQLite(), "../data/dodgers.sqlite") # read Modern Data Science with R for different ways to connect a database.
+library(RSQLite)
+con <- dbConnect(SQLite(), "C:/Users/Emre/Downloads/dodgers.sqlite")
+
+## dbListTables(con)
+
+tbl(con, "events") %>% 
+  collect() %>% 
+  mutate(day_of_week = factor(day_of_week, levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")),
+         month = factor(month, levels = c("APR","MAY","JUN","JUL","AUG","SEP","OCT"))) %>% 
+  mutate_if(is.character, factor) %>% 
+  mutate(temp = round((temp- 32)*5/9)) -> events
+```
+  
+## Variable Analysis
+
+```{r}
+g <- events %>%  ggplot(aes(attend))
+g + geom_density(aes(fill=factor(day_of_week)), alpha=0.8) + 
+    labs(title="Density plot", 
+         subtitle="Attendance by Number of Days",
+         x="Attendance",
+         fill="Days")
+```
+This graph shows the density distribution days with regards to attendance. Some days are more homogeneous like Fridays, compared to some days like Mondays, where there is a peak distribution around 33k attendance. This graph might highlight some correlation for the reason between attendance and day of the weeks that will be examined in the coming sections. 
+
+Then relationship of variables that were not covered in the class with regards to attendance were examined.  
+
+```{r}
+lmod05 <- lm(attend ~ cap, data = events)
+lmod05 %>% summary()
+#lmod05 %>% plot()
+```
+```{r}
+events %>% 
+  ggplot(aes(cap, attend)) +
+  geom_jitter(aes(col = day_of_week)) +
+  geom_text(aes(label = str_sub(day_of_week, 1,3), col = day_of_week)) +
+  geom_smooth(se = FALSE)
+```
+```{r}
+t.test(x=events$attend[events$cap=="NO"],
+       y=events$attend[events$cap=="YES"])
+```
+```{r}
+events %>% 
+  ggplot(aes(cap, attend)) +
+  geom_boxplot()
+```
+```{r}
+events %>% 
+  ggplot(aes(cap)) +
+  geom_bar(aes(fill=attend))
+```
+
+
+The no cap days include more days and consequently we have more data about its spread within the day of the week, but since there are just two cap days same can't be said for this case. The data is heavily skewed towards no cap days. Since there is a discrepancy in the data with the cap and without the cap, the conclusion derived from this data will be biased. So cap data entered to the model might introduce biased conclusions. As seen in the graph, the average attendance with cap days is lower than no caps days. The p-value of caps is  high, so the null hypotheses is passed that there is no relation between caps and attendance. Also there isn't a significant statistical difference in average attendance with or without caps shown by the Welch Two Sample Test.
+```{r}
+lmod06 <- lm(attend ~ shirt, data = events)
+lmod06 %>% summary()
+```
+```{r}
+events %>% 
+  ggplot(aes(shirt, attend)) +
+  geom_jitter(aes(col = day_of_week)) +
+  geom_text(aes(label = str_sub(day_of_week, 1,3), col = day_of_week)) +
+  geom_smooth(se = FALSE)
+```
+```{r}
+t.test(x=events$attend[events$shirt=="NO"],
+       y=events$attend[events$shirt=="YES"])
+```
+```{r}
+events %>% 
+  ggplot(aes(shirt, attend)) +
+  geom_boxplot()
+```
+```{r}
+events %>% 
+  ggplot(aes(shirt)) +
+  geom_bar(aes(fill=attend))
+```
+
+
+Same situation with the cap case, less shirt days than no shirt days, as a consequence of insufficient data the conclusion drawn from the data will introduce bias and possibly error.The p-value of shirts is high, so the null hypotheses is passed that there is no relation between shirts and attendance. Also as seen in the graph, the average attendance with shirt days is higher than no shirt days.
+```{r}
+lmod07 <- lm(attend ~ fireworks, data = events)
+lmod07 %>% summary()
+```
+```{r}
+events %>% 
+  ggplot(aes(fireworks, attend)) +
+  geom_jitter(aes(col = day_of_week)) +
+  geom_text(aes(label = str_sub(day_of_week, 1,3), col = day_of_week)) +
+  geom_smooth(se = FALSE)
+```
+```{r}
+t.test(x=events$attend[events$fireworks=="NO"],
+       y=events$attend[events$fireworks=="YES"])
+```
+```{r}
+events %>% 
+  ggplot(aes(fireworks, attend)) +
+  geom_boxplot()
+```
+```{r}
+events %>% 
+  ggplot(aes(fireworks)) +
+  geom_bar(aes(fill=attend))
+```
+
+
+There is more data in fireworks compared to two previous cases, and the days with fireworks mainly consist of Fridays. As seen in the graph, the average attendance with fireworks days is indifferent than no fireworks days. The p-value of fireworks is high, so the null hypotheses is passed that there is no relation between fireworks and attendance. Also there isn't a significant statistical difference in average attendance with or without fireworks shown by the Welch Two Sample Test.
+```{r}
+lmod08 <- lm(attend ~ bobblehead, data = events)
+lmod08 %>% summary()
+```
+
+```{r}
+events %>% 
+  ggplot(aes(bobblehead, attend)) +
+  geom_jitter(aes(col = day_of_week)) +
+  geom_text(aes(label = str_sub(day_of_week, 1,3), col = day_of_week)) +
+  geom_smooth(se = FALSE)
+```
+In the bobblehead data, the average attendance increase is greater than the other variables and this is the only variable that fails the null hypotheses showing some correlation with the attendance. 
+
+```{r}
+t.test(x=events$attend[events$bobblehead=="NO"],
+       y=events$attend[events$bobblehead=="YES"])
+```
+```{r}
+events %>% 
+  ggplot(aes(bobblehead, attend)) +
+  geom_boxplot()
+```
+```{r}
+events %>% 
+  ggplot(aes(bobblehead)) +
+  geom_bar(aes(fill=attend))
+```
+
+
+```{r}
+lmod09 <- lm(attend ~ opponent, data = events)
+lmod09 %>% summary()
+```
+
+For some opponents the null hypotheses is rejected but for some its not. This might be due to the hype of the game and corresponding teams ability to generate hype. Some teams might be favored in the last model.
+```{r}
+
+events %>% 
+  ggplot(aes(opponent)) +
+  geom_bar(aes(fill=attend))
+```
+Hype teams: Brewers, Cardinals, Giants, Mets, Padres, Rockies, Snakes
+(Teams that have more than average numbers of games played, doesn't mean more popular teams, just that the dataset is populated more by them)
+
+```{r}
+d <- dbReadTable(con, "events")
+
+opponentmod <- ggplot(d, aes(x = opponent, y = attend, fill = opponent)) +
+   geom_boxplot() +
+   theme(axis.text.x=element_blank(),
+   axis.ticks.x=element_blank()) +
+   ggtitle("Opponent - Attend ")
+opponentmod
+
+```
+Some opponents have higher attendance that others, this spread in the data might be the reason for the acceptance of null hypotheses. This might suggest that although some opponents have an effect on attendance, because of other teams diminished effects, their effect might get lost in the data. Hence the null hypotheses.  
+```{r}
+lmod10 <- lm(attend ~ day_night*temp, data = events)
+lmod10 %>% summary()
+```
+Although the significance level of day-night and temperature is lower, correlation can be observed between day-night and temperature data, for natural reasons at 10% significant level.
+
+```{r}
+lmod11 <- lm(attend ~ opponent*bobblehead, data = events)
+lmod11 %>% summary()
+```
+```{r}
+lmod12 <- lm(attend ~ opponent*shirt, data = events)
+lmod12 %>% summary()
+```
+```{r}
+lmod13 <- lm(attend ~ opponent*cap, data = events)
+lmod13 %>% summary()
+```
+```{r}
+lmod11 <- lm(attend ~ opponent*fireworks, data = events)
+lmod11 %>% summary()
+```
+Astros, Braves, Brewers, Giants, Rockies and Snakes have their p-values smaller than 0.05 for almost all of the cap, shirt, fireworks and bobblehead categories. Brewers, Giants, Rockies, Snakes were also categorized as hype teams, for higher than average games played. These teams might bring in more crowds and consequently, boost the sales of shirts, caps,and bobbleheads. So the caps, shirts, bobblehead, and fireworks variables might be interacting with some sub-categories of opponents variable.  
+
+```{r}
+d_two <- d %>% 
+  mutate(AttendanceCat = cut(attend, breaks = 10, 
+                     labels=c("1","2","3","4","5","6","7","8","9","10")))
+
+# attend column cut into five levels for chi_square tests
+bobblehead_tab <- table(d_two$AttendanceCat, d_two$bobblehead)
+day_of_week_tab <- table(d_two$AttendanceCat, d_two$day_of_week)
+shirt_tab <- table(d_two$AttendanceCat, d_two$shirt)
+opponent_tab <- table(d_two$AttendanceCat, d_two$opponent)
+fireworks_tab <- table(d_two$AttendanceCat, d_two$fireworks)
+temp_tab <- table(d_two$AttendanceCat, d_two$temp)
+cap_tab<- table(d_two$AttendanceCat, d_two$cap)
+month_table <- table(d_two$AttendanceCat, d_two$month)
+day_tab <- table(d_two$AttendanceCat, d_two$day)
+skies_tab <- table(d_two$AttendanceCat, d_two$skies)
+day_night_tab <- table(d_two$AttendanceCat, d_two$day_night)
+```
+
+```{r}
+pander(chisq.test(bobblehead_tab))
+pander(chisq.test(day_of_week_tab))
+pander(chisq.test(shirt_tab))
+pander(chisq.test(opponent_tab))
+pander(chisq.test(fireworks_tab))
+pander(chisq.test(temp_tab))
+pander(chisq.test(cap_tab))
+pander(chisq.test(month_table))
+pander(chisq.test(day_tab))
+pander(chisq.test(skies_tab))
+pander(chisq.test(day_night_tab))
+
+```
+```{r}
+
+```
+
+Chi-square test shows that bobblehead, opponent, and month are not mutually independent from attendance, more indication of correlation, these findings will be used in constructing the final model.
+```{r}
+events %>% 
+  ggplot(aes(month, attend)) +
+  geom_boxplot(aes(fill = day_night))
+```
+When the temperature is within optimum ranges, neither too cold or too hot, the attendance difference between day and night seems to drop.  
+
+Previously in the classes it was shown that the temperature variable was found to be correlated with attendance in the pre-examination of data, but further examination of the model showed that this hypotheses was rejected later on. Same approach will be applied for all the variables in the following section.  
+
+## Building the Model 
+
+Firstly, all of the variables are plugged in for a base-line model. 
+```{r}
+model0 <-lm(formula = attend ~ month + day + day_of_week + opponent + 
+  skies + day_night + cap + shirt + fireworks + bobblehead + 
+  pmax(0,temp-24), data = events)
+model0 %>% summary()
+```
+
+```{r}
+plot(model0)
+
+```
+```{r}
+AIC(model0)
+```
+
+
+Then by using the variables that were shown to be not mutually exclusive using Chi-square the second model was constructed. 
+
+```{r}
+model1 <-lm(formula = attend ~ month + day_of_week + opponent  + bobblehead , data = events)
+model1 %>% summary()
+plot(model1)
+```
+```{r}
+AIC(model1)
+```
+
+```{r}
+anova(model0,model1)
+```
+These two models are statistically different, with significance level bit higher than 5 percent, but AIC score of the second model increased, which means lower capability of generalizing data. This situation is not desirable since the objective of this project is to generate a predictive model. 
+
+In order to thoroughly examine the effects of each variable all the other variables were plugged in to the model. Through checking their AIC scores the variables that lowered the score were left out, and via iterating through all the variables a new model was built. Also with ANOVA function model was updated with removed state of the iterated variables and compared. This was done to determine if the iterated variable was infact crucial for the model. For sake of readability only the check of shirt variable was left.   
+
+```{r}
+model3 <-lm(formula = attend ~ month + day_of_week +cap +fireworks+ bobblehead , data = events)
+model3 %>% summary()
+plot(model3)
+anova(update(model3, . ~ . - shirt), model3)
+
+```
+
+```{r}
+AIC(model3)
+anova(model0,model3)
+```
+Using ANOVA function it is observed that these models are statistically equivalent in terms of point prediction. However, AIC score is improved, which is more important for the purpose of this project. 
+
+For further improvement, the high correlation observed between bobblehead, month, and day of the week was utilized. So the model was modified with a more complex model. Then all of the other variables were tested once again to ensure none of the effects of variables were overlooked, and within the model and shirt, skies, and temp were found to decrease r^2 and increase the error, so they were omitted in the final model. Same ANOVA method was used to see if all the variables were infact crucial in the model. Significant variables were again checked with ANOVA function.  
+(Note: Final model is named model2, not model3)
+```{r}
+model2 <-lm(formula = attend ~ month * day_of_week  *bobblehead+cap+fireworks+opponent, data = events)
+model2 %>% summary()
+  anova(update(model2, . ~ . - fireworks), model2)
+  
+plot(model2)
+```
+
+```{r}
+anova(model2,model0)
+anova(model2,model1)
+anova(model2,model3)
+AIC(model2)
+```
+
+For the final steps, with ANOVA function the point prediction difference of each model is checked with regards to final model, and its seen that statistically final model is different from the other models. Then AIC score is checked and its found that it is the lowest among all the other models. 
+
+```{r}
+anova(update(model2, . ~ . - bobblehead), model2)
+```
+Then using ANOVA the effect of bobblehead on attendance is checked and its seen that null hypotheses is rejected. So it is concluded that bobblehead effects the attendance and since RSS is positive, it contributes positively to the attendance, it increases the attendance. 
+
+Then R^2 score, RSE, and percentage errors are found:
+
+R^2:
+```{r}
+round(100*summary(model2)$adj.r.squared)
+
+```
+
+RSE:
+```{r}
+sigma(model2)
+```
+
+Percentage Error:
+```{r}
+100*sigma(model2)/56000
+```
+
+
+```{r}
+update(model2, contrast = list(month = "contr.sum", bobblehead = "contr.sum")) %>% coef() 
+```
+
+
+```{r}
+effects::predictorEffect("month", model2) %>% plot()
+```
+
+
+```{r}
+update(model2, contrast = list(month = "contr.sum", bobblehead = "contr.sum")) %>% coef() 
+effects::predictorEffect("month", model3) %>% plot()
+```
+```{r}
+summary(model2) %>% 
+  coef() %>% 
+  as_tibble(rownames = "Predictor") %>% 
+  arrange(`Pr(>|t|)`) %>% 
+  pander(caption = "Summary")
+```
+
+
+```{r}
+newdata = data.frame(month = "JUN",day_of_week="Friday",cap="YES",bobblehead="YES",fireworks="YES",shirt="YES",opponent="Cardinals",temp=mean(events$temp))
+predict(model2, newdata = newdata, interval = "prediction", level = 0.90)
+```
+## Conclusions
+
+The final model included month, day_of_week, bobblehead, cap, firework, and opponent variables. It was seen that some of the variables that were previously deemed to be important for the attendance prediction were actually not that relevant (temperature), and vice versa was also true. The fireworks variable was not deemed to be that relevant in the initial review, but later turned out to be a useful variable in the final model. Finally, it was seen that bobblehead affected the attendance and its effect was positively corrlated with attendance. 
+
+For better results individual opponent analysis might be done, as the effects of teams in cap, shirts, and bobblehead variables vary substantially. Also the cap, shirt, skies, and bobblehead variables have unbalanced amount of data in among their categories, which might introduce bias and reduce the effectiveness of predictions. Gaining more information about these variables would make the predictions more accurate. 
